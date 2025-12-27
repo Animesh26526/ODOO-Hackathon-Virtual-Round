@@ -1,1 +1,1 @@
-# ODOO-Hackathon-Practice
+# ODOO-Hackathon-Virtual-Round
