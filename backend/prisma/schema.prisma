@@ -1,0 +1,160 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+ 
+ // Enums
+ enum Role {
+   ADMIN
+   MANAGER
+   TECHNICIAN
+   USER
+ }
+
+ enum MaintenanceType {
+   CORRECTIVE
+   PREVENTIVE
+ }
+
+ enum RequestStatus {
+   NEW
+   IN_PROGRESS
+   REPAIRED
+ }
+
+ // Models
+ model User {
+   id             Int       @id @default(autoincrement())
+   name           String
+   email          String    @unique
+   password       String
+   role           Role      @default(USER)
+  // relations
+   assignedRequests MaintenanceRequest[] @relation("TechnicianRequests")
+   teamMemberships  TeamMember[]
+   equipment        Equipment[] @relation("TechnicianEquipment")
+  performedLogs    MaintenanceLog[]
+  
+  createdAt      DateTime  @default(now())
+ }
+
+ model MaintenanceTeam {
+   id        Int      @id @default(autoincrement())
+  name      String  @map("team_name")
+   company   String?
+
+  members   TeamMember[]
+  equipment Equipment[]
+  requests  MaintenanceRequest[]
+ }
+
+ model TeamMember {
+   teamId   Int
+   userId   Int
+  team     MaintenanceTeam @relation(fields: [teamId], references: [id])
+  user     User            @relation(fields: [userId], references: [id])
+
+  @@map("TeamMember")
+
+   @@id([teamId, userId])
+ }
+
+ model EquipmentCategory {
+   id        Int       @id @default(autoincrement())
+   name      String    @unique
+   company   String?
+  equipment Equipment[]
+ }
+
+ model Equipment {
+   id           Int      @id @default(autoincrement())
+   name         String
+  serialNumber String   @unique @map("serial_number")
+  employeeName String?  @map("employee_name")
+  department   String?
+  location     String?
+  purchaseDate DateTime? @map("purchase_date")
+  warrantyEnd  DateTime? @map("warranty_end")
+  isScrapped   Boolean  @default(false) @map("is_scrapped")
+
+  categoryId   Int      @map("category_id")
+  category     EquipmentCategory @relation(fields: [categoryId], references: [id])
+
+  teamId       Int      @map("team_id")
+  team         MaintenanceTeam   @relation(fields: [teamId], references: [id])
+
+  technicianId Int?     @map("technician_id")
+  technician   User?    @relation("TechnicianEquipment", fields: [technicianId], references: [id])
+
+  workCenterId Int?
+  workCenter   WorkCenter? @relation(fields: [workCenterId], references: [id])
+
+  requests     MaintenanceRequest[]
+ }
+
+ model MaintenanceRequest {
+   id            Int           @id @default(autoincrement())
+   subject       String
+   type          MaintenanceType
+   status        RequestStatus @default(NEW)
+
+   equipmentId   Int
+   equipment     Equipment     @relation(fields: [equipmentId], references: [id])
+
+   teamId        Int
+   team          MaintenanceTeam @relation(fields: [teamId], references: [id])
+
+   technicianId  Int?
+   technician    User? @relation("TechnicianRequests", fields: [technicianId], references: [id])
+
+  scheduledDate DateTime? @map("scheduled_date")
+  durationHours Float?    @map("duration_hours")
+
+  logs          MaintenanceLog[]
+
+  createdAt     DateTime @default(now()) @map("created_at")
+
+   @@index([status])
+   @@index([teamId])
+   @@index([scheduledDate])
+ }
+
+ model MaintenanceLog {
+   id            Int      @id @default(autoincrement())
+  requestId     Int     @map("request_id")
+  request       MaintenanceRequest @relation(fields: [requestId], references: [id])
+  action        String
+  fromStatus    RequestStatus? @map("from_status")
+  toStatus      RequestStatus? @map("to_status")
+
+  performedById Int?    @map("performed_by_id")
+  performedBy   User?   @relation(fields: [performedById], references: [id])
+
+  notes         String?
+  durationHours Float?
+  createdAt     DateTime @default(now()) @map("created_at")
+ }
+
+ model WorkCenter {
+   id          Int      @id @default(autoincrement())
+   name        String   @unique
+   code        String?
+  location    String?
+  costPerHour Float? @map("cost_per_hour")
+  capacity    Int?
+  oeeTarget   Float? @map("oee_target")
+
+  equipment   Equipment[]
+
+  createdAt   DateTime @default(now())
+ }
