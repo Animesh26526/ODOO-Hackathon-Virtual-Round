@@ -1,7 +1,7 @@
 export function getRoleLanding(role?: string | null) {
   switch (role) {
     case 'ADMIN':
-      return '/admin';
+      return '/dashboard';
     case 'MANAGER':
       return '/manager-dashboard';
     case 'TECHNICIAN':

@@ -145,7 +145,7 @@ export default function Login() {
 
           <div className="mt-4 text-center">
             <span className="text-sm text-muted-foreground">Don’t have an account?</span>{' '}
-            <Link to="/register" className="text-primary-foreground font-medium hover:underline">Create account</Link>
+            <Link to="/register" className="text-primary font-medium hover:underline">Create account</Link>
           </div>
 
           

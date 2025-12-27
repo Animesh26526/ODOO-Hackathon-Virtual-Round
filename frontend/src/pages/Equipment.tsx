@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,17 +39,31 @@ import { Link } from 'react-router-dom';
 export default function EquipmentPage() {
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  interface TeamOption { id: number | string; teamName?: string; name?: string; company?: string }
+  interface CategoryOption { id: number | string; name: string }
+  const [teams, setTeams] = useState<TeamOption[]>([]);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const { hasPermission } = useAuth();
 
-  const fetchEquipment = async () => {
+  const fetchEquipment = useCallback(async () => {
     setIsLoading(true);
     try {
       const response: unknown = await api.getEquipment(1, 50);
       if (Array.isArray(response)) {
         setEquipment(response as Equipment[]);
+        // extract categories and teams from returned equipment
+        const cats = Array.from(new Map((response as Equipment[]).map(e => [String(e.category?.id || ''), e.category])).values()).filter(Boolean) as CategoryOption[];
+        setCategories(cats);
+        const ts = Array.from(new Map((response as Equipment[]).map(e => [String(e.team?.id || ''), e.team])).values()).filter(Boolean) as TeamOption[];
+        setTeams(ts);
       } else if (response && typeof response === 'object' && 'data' in response && Array.isArray((response as { data?: unknown }).data)) {
         setEquipment((response as { data: Equipment[] }).data || []);
+        const list = (response as { data: Equipment[] }).data || [];
+        const cats = Array.from(new Map(list.map(e => [String(e.category?.id || ''), e.category])).values()).filter(Boolean) as CategoryOption[];
+        setCategories(cats);
+        const ts = Array.from(new Map(list.map(e => [String(e.team?.id || ''), e.team])).values()).filter(Boolean) as TeamOption[];
+        setTeams(ts);
       } else {
         setEquipment([]);
       }
@@ -58,11 +72,11 @@ export default function EquipmentPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchEquipment();
-  }, []);
+  }, [fetchEquipment]);
 
   // Create equipment modal state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -72,17 +86,21 @@ export default function EquipmentPage() {
   const [newLocation, setNewLocation] = useState('');
   const [newWarrantyEnd, setNewWarrantyEnd] = useState('');
   const [creating, setCreating] = useState(false);
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
   const handleCreate = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setCreating(true);
     try {
-      const payload = {
+      const payload: { [k: string]: unknown } = {
         name: newName,
         serialNumber: newSerial,
         department: newDepartment,
         location: newLocation,
         warrantyEnd: newWarrantyEnd || null,
+        teamId: selectedTeamId || (teams[0] && teams[0].id),
+        categoryId: selectedCategoryId || (categories[0] && categories[0].id),
       };
       const res = await api.createEquipment(payload);
       // assume success if no thrown error
@@ -90,10 +108,25 @@ export default function EquipmentPage() {
       setIsCreateOpen(false);
       // reset form
       setNewName(''); setNewSerial(''); setNewDepartment(''); setNewLocation(''); setNewWarrantyEnd('');
+      setSelectedTeamId(null); setSelectedCategoryId(null);
       // refresh list
       await fetchEquipment();
     } catch (err) {
       console.error('Create equipment failed', err);
+      // try to confirm by refetching list; if equipment with same serial exists, treat as success
+      try {
+        await fetchEquipment();
+        const exists = equipment.find(eq => eq.serialNumber === newSerial) || null;
+        if (exists) {
+          toast.success('Equipment created (confirmed)');
+          setIsCreateOpen(false);
+          setNewName(''); setNewSerial(''); setNewDepartment(''); setNewLocation(''); setNewWarrantyEnd('');
+          setSelectedTeamId(null); setSelectedCategoryId(null);
+          return;
+        }
+      } catch (_e) {
+        // ignore
+      }
       toast.error('Failed to create equipment');
     } finally {
       setCreating(false);
@@ -152,6 +185,24 @@ export default function EquipmentPage() {
                       <label className="block text-sm mb-1">Name</label>
                       <Input value={newName} onChange={(e) => setNewName(e.target.value)} required />
                     </div>
+                      <div>
+                        <label className="block text-sm mb-1">Team</label>
+                        <select value={selectedTeamId ?? ''} onChange={(e) => setSelectedTeamId(e.target.value)} className="w-full h-10 px-2" required>
+                          <option value="">Choose team</option>
+                          {teams.map(t => (
+                            <option key={t.id} value={String(t.id)}>{t.teamName || t.name || `Team ${t.id}`}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm mb-1">Category</label>
+                        <select value={selectedCategoryId ?? ''} onChange={(e) => setSelectedCategoryId(e.target.value)} className="w-full h-10 px-2" required>
+                          <option value="">Choose category</option>
+                          {categories.map(c => (
+                            <option key={c.id} value={String(c.id)}>{c.name}</option>
+                          ))}
+                        </select>
+                      </div>
                     <div>
                       <label className="block text-sm mb-1">Serial Number</label>
                       <Input value={newSerial} onChange={(e) => setNewSerial(e.target.value)} />

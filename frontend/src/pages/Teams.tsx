@@ -24,10 +24,12 @@ import {
 import { api } from '@/services/api';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
+import { toast } from 'sonner';
 
 export interface Team {
   id: number | string;
   teamName: string;
+  name?: string;
   company?: string;
   // add other fields as needed
 }
@@ -43,6 +45,7 @@ export default function TeamsPage() {
   const { hasPermission } = useAuth();
   const [teams, setTeams] = useState<Team[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [teamMembersMap, setTeamMembersMap] = useState<Record<string, Technician[]>>({});
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [creatingTeam, setCreatingTeam] = useState(false);
   const [newTeamName, setNewTeamName] = useState('');
@@ -57,6 +60,15 @@ export default function TeamsPage() {
   }
 
   const [requests, setRequests] = useState<Request[]>([]);
+
+  function normalizeArray<T>(res: unknown): T[] {
+    if (Array.isArray(res)) return res as T[];
+    if (res && typeof res === 'object' && 'data' in res) {
+      const d = (res as { data?: unknown }).data;
+      if (Array.isArray(d)) return d as T[];
+    }
+    return [];
+  }
 
   useEffect(() => {
     const load = async () => {
@@ -87,17 +99,45 @@ export default function TeamsPage() {
         } else {
           setRequests([]);
         }
-        // if no teams exist on backend, create a couple of sample teams
+          // if no teams exist on backend, create a couple of sample teams
         const teamsEmpty = Array.isArray(tRes) ? tRes.length === 0 : !(tRes && typeof tRes === 'object' && Array.isArray((tRes as { data?: Team[] }).data) && (tRes as { data?: Team[] }).data!.length > 0);
         if (teamsEmpty) {
           try {
             await api.createTeam({ name: 'Maintenance A', company: 'Acme Corp' });
             await api.createTeam({ name: 'Maintenance B', company: 'ACME Plant 2' });
-            const after: any = await api.getTeams();
-            if (Array.isArray(after)) setTeams(after);
-            else if (after && typeof after === 'object' && Array.isArray((after as { data?: Team[] }).data)) setTeams((after as { data: Team[] }).data);
+            const after: unknown = await api.getTeams();
+            const normalized = (() => {
+              if (Array.isArray(after)) return after as Team[];
+              if (after && typeof after === 'object' && 'data' in after) {
+                const d = (after as { data?: unknown }).data;
+                if (Array.isArray(d)) return d as Team[];
+              }
+              return [] as Team[];
+            })();
+            setTeams(normalized);
+            // fetch members for newly created teams
+            for (const t of normalized) {
+              try {
+                const m: unknown = await api.getTeamMembers(String(t.id));
+                const members = normalizeArray<Technician>(m);
+                setTeamMembersMap(prev => ({ ...prev, [String(t.id)]: members }));
+              } catch (e) {
+                // ignore per-team failure
+              }
+            }
           } catch (seedErr) {
             console.error('Failed to seed teams', seedErr);
+          }
+        }
+        // also fetch members for existing teams (if any)
+        const teamsList: Team[] = Array.isArray(tRes) ? tRes : (tRes && typeof tRes === 'object' && 'data' in tRes ? (tRes as { data?: Team[] }).data || [] : []);
+        for (const t of teamsList) {
+          try {
+            const m: unknown = await api.getTeamMembers(String(t.id));
+            const members = normalizeArray<Technician>(m);
+            setTeamMembersMap(prev => ({ ...prev, [String(t.id)]: members }));
+          } catch (e) {
+            // ignore
           }
         }
       } catch (err) {
@@ -112,12 +152,13 @@ export default function TeamsPage() {
     if (!newTeamName) return;
     setCreatingTeam(true);
     try {
-      const created: any = await api.createTeam({ name: newTeamName, company: newTeamCompany });
-      // optimistic update: append created team to list
-      setTeams((prev) => [created, ...prev]);
+    const created: unknown = await api.createTeam({ name: newTeamName, company: newTeamCompany });
+    if (created && typeof created === 'object') setTeams((prev) => [created as Team, ...prev]);
       setNewTeamName(''); setNewTeamCompany(''); setIsCreateOpen(false);
     } catch (err) {
       console.error('Create team failed', err);
+      const msg = (err && typeof err === 'object') ? (err.error || (err.message as string) || JSON.stringify(err)) : String(err);
+      toast.error(msg || 'Create team failed');
     } finally {
       setCreatingTeam(false);
     }
@@ -132,12 +173,13 @@ export default function TeamsPage() {
   };
 
   const getTeamMembers = (teamId: number | string) => {
-    // backend provides member lists through /api/teams/:id/members endpoint, but we simulate by filtering technicians
+    const key = String(teamId);
+    if (teamMembersMap[key] && teamMembersMap[key].length > 0) return teamMembersMap[key];
     return technicians.slice(0, 3);
   };
 
 // Add Technician form component
-function AddTechnicianForm({ teams, onAdded }: { teams: Team[]; onAdded: (created?: any) => Promise<void> | void }) {
+function AddTechnicianForm({ teams, onAdded }: { teams: Team[]; onAdded: (created?: unknown) => Promise<void> | void }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('password123');
@@ -149,10 +191,11 @@ function AddTechnicianForm({ teams, onAdded }: { teams: Team[]; onAdded: (create
     if (!name || !email || !password) return;
     setSubmitting(true);
     try {
-      const created: any = await api.authRegister({ name, email, password, role: 'TECHNICIAN' });
-      if (teamId) {
+      const created: unknown = await api.authRegister({ name, email, password, role: 'TECHNICIAN' });
+      if (teamId && created && typeof created === 'object' && 'id' in created) {
         try {
-          await api.addTeamMember(String(teamId), String(created.id));
+          const cid = String((created as { id: unknown }).id);
+          await api.addTeamMember(String(teamId), cid);
         } catch (err) {
           console.error('Failed to add member to team', err);
         }
@@ -160,6 +203,22 @@ function AddTechnicianForm({ teams, onAdded }: { teams: Team[]; onAdded: (create
       await onAdded(created);
     } catch (err) {
       console.error('Create technician failed', err);
+      // try to confirm by refetching technicians by email; if found, treat as success
+      try {
+        const techs: unknown = await api.getTechnicians();
+        const list = Array.isArray(techs) ? techs as Technician[] : (techs && typeof techs === 'object' && 'data' in techs ? (techs as { data?: Technician[] }).data || [] : []);
+        const found = list.find(t => t.email === email);
+        if (found) {
+          await onAdded(found);
+          toast.success('Technician created (confirmed)');
+          setSubmitting(false);
+          return;
+        }
+      } catch (_e) {
+        // ignore
+      }
+      const msg = (err && typeof err === 'object') ? (err.error || (err.message as string) || JSON.stringify(err)) : String(err);
+      toast.error(msg || 'Create technician failed');
     } finally {
       setSubmitting(false);
     }
@@ -184,13 +243,58 @@ function AddTechnicianForm({ teams, onAdded }: { teams: Team[]; onAdded: (create
         <select value={teamId} onChange={(e) => setTeamId(e.target.value)} className="w-full h-10 px-2">
           <option value="">None</option>
           {teams.map(t => (
-            <option key={t.id} value={String(t.id)}>{(t as any).teamName || (t as any).name || `Team ${t.id}`}</option>
+            <option key={t.id} value={String(t.id)}>{t.teamName || t.name || `Team ${t.id}`}</option>
           ))}
         </select>
       </div>
       <div className="flex justify-end gap-2">
         <Button variant="outline" type="button" onClick={() => { /* Dialog close handled by parent */ }}>Cancel</Button>
         <Button type="submit" variant="gradient" disabled={submitting}>{submitting ? 'Adding...' : 'Add Technician'}</Button>
+      </div>
+    </form>
+  );
+}
+
+function AddMemberForm({ teams, technicians, onAdded }: { teams: Team[]; technicians: Technician[]; onAdded: () => Promise<void> | void }) {
+  const [teamId, setTeamId] = useState<string | ''>('');
+  const [userId, setUserId] = useState<string | ''>('');
+  const [loading, setLoading] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!teamId || !userId) return;
+    setLoading(true);
+    try {
+      await api.addTeamMember(String(teamId), String(userId));
+      await onAdded();
+    } catch (err) {
+      console.error('Add member failed', err);
+      const msg = (err && typeof err === 'object') ? (err.error || (err.message as string) || JSON.stringify(err)) : String(err);
+      toast.error(msg || 'Add member failed');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-3 mt-2">
+      <div>
+        <label className="text-sm block mb-1">Team</label>
+        <select value={teamId} onChange={(e) => setTeamId(e.target.value)} className="w-full h-10 px-2" required>
+          <option value="">Choose team</option>
+          {teams.map(t => <option key={t.id} value={String(t.id)}>{t.teamName || t.name || `Team ${t.id}`}</option>)}
+        </select>
+      </div>
+      <div>
+        <label className="text-sm block mb-1">Technician</label>
+        <select value={userId} onChange={(e) => setUserId(e.target.value)} className="w-full h-10 px-2" required>
+          <option value="">Choose technician</option>
+          {technicians.map(u => <option key={u.id} value={String(u.id)}>{u.name}</option>)}
+        </select>
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" type="button">Cancel</Button>
+        <Button type="submit" variant="gradient" disabled={loading}>{loading ? 'Adding...' : 'Add'}</Button>
       </div>
     </form>
   );
@@ -259,14 +363,39 @@ function AddTechnicianForm({ teams, onAdded }: { teams: Team[]; onAdded: (create
                   <DialogDescription>Create a technician account and optionally add to a team.</DialogDescription>
                 </DialogHeader>
                 <AddTechnicianForm teams={teams} onAdded={async (created) => {
-                  if (created) {
-                    setTechnicians((prev) => [created, ...prev]);
+                  if (created && typeof created === 'object' && 'id' in created && 'name' in created) {
+                    setTechnicians((prev) => [(created as Technician), ...prev]);
                   } else {
-                    const t: any = await api.getTechnicians();
-                    if (Array.isArray(t)) setTechnicians(t);
-                    else if (t && typeof t === 'object' && Array.isArray((t as { data?: Technician[] }).data)) setTechnicians((t as { data: Technician[] }).data);
+                    const t: unknown = await api.getTechnicians();
+                    const normalized = normalizeArray<Technician>(t);
+                    setTechnicians(normalized);
                   }
                   setIsAddTechOpen(false);
+                }} />
+              </DialogContent>
+            </Dialog>
+          )}
+          {hasPermission('teams.manage') && (
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Member
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add Member to Team</DialogTitle>
+                  <DialogDescription>Select a team and technician to add as a member.</DialogDescription>
+                </DialogHeader>
+                <AddMemberForm teams={teams} technicians={technicians} onAdded={async () => {
+                  // refresh teams and technicians after add
+                  const t: unknown = await api.getTeams();
+                  const normalizedTeams = Array.isArray(t) ? t as Team[] : (t && typeof t === 'object' && 'data' in t ? (t as { data?: Team[] }).data || [] : []);
+                  setTeams(normalizedTeams);
+                  const techs: unknown = await api.getTechnicians();
+                  const normalizedTechs = Array.isArray(techs) ? techs as Technician[] : (techs && typeof techs === 'object' && 'data' in techs ? (techs as { data?: Technician[] }).data || [] : []);
+                  setTechnicians(normalizedTechs);
                 }} />
               </DialogContent>
             </Dialog>
@@ -301,9 +430,9 @@ function AddTechnicianForm({ teams, onAdded }: { teams: Team[]; onAdded: (create
               </div>
 
               <h3 className="font-semibold text-lg text-foreground mb-1 group-hover:text-primary transition-colors">
-                {(team as any).teamName || (team as any).name || `Team ${team.id}`}
+                {team.teamName || team.name || `Team ${team.id}`}
               </h3>
-                <p className="text-sm text-muted-foreground mb-4">{(team as any).company || ''}</p>
+                <p className="text-sm text-muted-foreground mb-4">{team.company || ''}</p>
 
               {/* Team Members */}
               <div className="flex items-center gap-2 mb-4">

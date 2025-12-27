@@ -1,8 +1,8 @@
 -- Generated seed data - safe to run after schema creation
 INSERT IGNORE INTO MaintenanceTeam (team_name, company) VALUES ('Team Alpha','Acme Co');
-INSERT IGNORE INTO `User` (name,email,password,role,teamId) VALUES ('Admin User','admin@example.com','$2b$10$X3awq854gRHgHPRYJz2VSefG/v1GW4cECSyG6qHmcc38yzLiiBIuG','ADMIN',(SELECT id FROM MaintenanceTeam WHERE team_name='Team Alpha' LIMIT 1));
-INSERT IGNORE INTO `User` (name,email,password,role,teamId) VALUES ('Manager User','manager@example.com','$2b$10$VJlj/nZ06b8HLpH4SSPWSuHiy4iBu4oijryUJBcKsgnO/xHjVsRGG','MANAGER',(SELECT id FROM MaintenanceTeam WHERE team_name='Team Alpha' LIMIT 1));
-INSERT IGNORE INTO `User` (name,email,password,role,teamId) VALUES ('Tech One','tech1@example.com','$2b$10$ads5bg6mzy/IOnZJ3ikAwuwRFPcOJ6.unMmLefc66yquVDu3E0yJy','TECHNICIAN',(SELECT id FROM MaintenanceTeam WHERE team_name='Team Alpha' LIMIT 1));
+INSERT IGNORE INTO `User` (name,email,password,role,teamId) VALUES ('Admin User','admin@example.com','$2b$10$1.HiEz7BW8sC5jaBvIuIzuzGuF1dmLUd.q7CoS0ux05Ngme2Umy8O','ADMIN',(SELECT id FROM MaintenanceTeam WHERE team_name='Team Alpha' LIMIT 1));
+INSERT IGNORE INTO `User` (name,email,password,role,teamId) VALUES ('Manager User','manager@example.com','$2b$10$ai8xjXf1.XbHWy2vMwC/jeN.lIyNfiedQJS9X0OzwFxsl1xqE3FnG','MANAGER',(SELECT id FROM MaintenanceTeam WHERE team_name='Team Alpha' LIMIT 1));
+INSERT IGNORE INTO `User` (name,email,password,role,teamId) VALUES ('Tech One','tech1@example.com','$2b$10$M8ZYFLrNT5AhgtuKK3kc2ewYG.FW.Yo7Ii9Q1LX1nQZYRj.z5xzU2','TECHNICIAN',(SELECT id FROM MaintenanceTeam WHERE team_name='Team Alpha' LIMIT 1));
 INSERT IGNORE INTO TeamMember (team_id, user_id) VALUES ((SELECT id FROM MaintenanceTeam WHERE team_name='Team Alpha' LIMIT 1),(SELECT id FROM `User` WHERE email='manager@example.com' LIMIT 1));
 INSERT IGNORE INTO TeamMember (team_id, user_id) VALUES ((SELECT id FROM MaintenanceTeam WHERE team_name='Team Alpha' LIMIT 1),(SELECT id FROM `User` WHERE email='tech1@example.com' LIMIT 1));
 INSERT IGNORE INTO EquipmentCategory (name,responsible_user_id,company) VALUES ('Heavy Machinery',(SELECT id FROM `User` WHERE email='manager@example.com' LIMIT 1),'Acme Co');
@@ -13,9 +13,9 @@ INSERT IGNORE INTO MaintenanceLog (request_id,action,from_status,to_status,perfo
 INSERT IGNORE INTO MaintenanceTeam (team_name, company) VALUES ('Mechanics','Acme Co');
 INSERT IGNORE INTO MaintenanceTeam (team_name, company) VALUES ('Electrical','Acme Co');
 INSERT IGNORE INTO MaintenanceTeam (team_name, company) VALUES ('Logistics','Acme Co');
-INSERT IGNORE INTO `User` (name,email,password,role,teamId) VALUES ('Charlie','charlie@example.com','$2b$10$kkuavymYsYcdTGVysojrT.M5R2YBBKJfXFC4f0ma47XAzbYR67/qK','TECHNICIAN',NULL);
-INSERT IGNORE INTO `User` (name,email,password,role,teamId) VALUES ('Diana','diana@example.com','$2b$10$JF/3sL9XMkrzWHNkEQSuGuMtAAfFSYuFTlQiv1ewah7/.AjaV.Fnm','MANAGER',NULL);
-INSERT IGNORE INTO `User` (name,email,password,role,teamId) VALUES ('Eve','eve@example.com','$2b$10$JsIBRmZH4UIr8LumgXqUP.bbiMwerjtrnZiBLxCxwkyqJvfsoimTa','USER',NULL);
+INSERT IGNORE INTO `User` (name,email,password,role,teamId) VALUES ('Charlie','charlie@example.com','$2b$10$p0fLckGlC./II5pZ4/urEOW/lBD0Q7xX6TsEeVZ9DLfcNm39FmhYu','TECHNICIAN',NULL);
+INSERT IGNORE INTO `User` (name,email,password,role,teamId) VALUES ('Diana','diana@example.com','$2b$10$kkCkKv3joNy7iUFw1RQjf.q21uINoLCeyFTCe/jAlrXh.xbccgwum','MANAGER',NULL);
+INSERT IGNORE INTO `User` (name,email,password,role,teamId) VALUES ('Eve','eve@example.com','$2b$10$fvY31a.27lSGRaoPQSe4YuL8vO3KMm3yGolrqa3wlnVsJJkeCT9.y','USER',NULL);
 INSERT IGNORE INTO EquipmentCategory (name,company) VALUES ('Conveyors','Acme Co');
 INSERT IGNORE INTO WorkCenter (name,code,cost_per_hour,capacity,oee_target) VALUES ('Assembly','WC-02',40.0,3,80.0);
 INSERT IGNORE INTO Equipment (name,serial_number,category_id,team_id,technician_id,company,workCenterId) VALUES ('Conveyor 100','EQ-100',(SELECT id FROM EquipmentCategory WHERE name='Conveyors' LIMIT 1),(SELECT id FROM MaintenanceTeam WHERE team_name='Logistics' LIMIT 1),(SELECT id FROM `User` WHERE role='TECHNICIAN' LIMIT 1),'Acme Co',(SELECT id FROM WorkCenter WHERE code='WC-02' LIMIT 1));
@@ -23,3 +23,5 @@ INSERT IGNORE INTO Equipment (name,serial_number,category_id,team_id,technician_
 INSERT IGNORE INTO Equipment (name,serial_number,category_id,team_id,technician_id,company,workCenterId) VALUES ('Generator G1','EQ-300',(SELECT id FROM EquipmentCategory WHERE name='Heavy Machinery' LIMIT 1),(SELECT id FROM MaintenanceTeam WHERE team_name='Electrical' LIMIT 1),(SELECT id FROM `User` WHERE role='TECHNICIAN' LIMIT 1),'Acme Co',(SELECT id FROM WorkCenter WHERE code='WC-02' LIMIT 1));
 INSERT IGNORE INTO MaintenanceRequest (subject,type,status,equipmentId,teamId,technicianId) VALUES ('Belt misalignment','CORRECTIVE','NEW',(SELECT id FROM Equipment WHERE serial_number='EQ-100' LIMIT 1),(SELECT id FROM MaintenanceTeam WHERE team_name='Logistics' LIMIT 1),(SELECT id FROM `User` WHERE role='TECHNICIAN' LIMIT 1));
 INSERT IGNORE INTO MaintenanceRequest (subject,type,status,equipmentId,teamId,technicianId) VALUES ('Overheating motor','CORRECTIVE','NEW',(SELECT id FROM Equipment WHERE serial_number='EQ-200' LIMIT 1),(SELECT id FROM MaintenanceTeam WHERE team_name='Mechanics' LIMIT 1),(SELECT id FROM `User` WHERE role='TECHNICIAN' LIMIT 1));
+INSERT IGNORE INTO MaintenanceRequest (subject,type,status,equipmentId,teamId,technicianId) VALUES ('Bearing replacement','CORRECTIVE','IN_PROGRESS',(SELECT id FROM Equipment WHERE serial_number='EQ-100' LIMIT 1),(SELECT id FROM MaintenanceTeam WHERE team_name='Logistics' LIMIT 1),(SELECT id FROM `User` WHERE role='TECHNICIAN' LIMIT 1));
+INSERT IGNORE INTO MaintenanceRequest (subject,type,status,equipmentId,teamId,technicianId) VALUES ('Control panel repair','CORRECTIVE','REPAIRED',(SELECT id FROM Equipment WHERE serial_number='EQ-200' LIMIT 1),(SELECT id FROM MaintenanceTeam WHERE team_name='Mechanics' LIMIT 1),(SELECT id FROM `User` WHERE role='TECHNICIAN' LIMIT 1));

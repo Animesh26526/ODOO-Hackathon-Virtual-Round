@@ -35,11 +35,19 @@ const rolePermissions: Record<UserRole, string[]> = {
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [authState, setAuthState] = useState<AuthState>({
-    user: null,
-    isAuthenticated: false,
-    token: null,
-  });
+  // initialize auth state from localStorage so UI permissions are available on first render
+  const getInitialAuth = (): AuthState => {
+    try {
+      const token = localStorage.getItem('token');
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? (JSON.parse(userStr) as User) : null;
+      return { user, isAuthenticated: !!token && !!user, token: token || null };
+    } catch (err) {
+      return { user: null, isAuthenticated: false, token: null };
+    }
+  };
+
+  const [authState, setAuthState] = useState<AuthState>(getInitialAuth);
 
   const login = useCallback(async (email: string, _password: string): Promise<boolean> => {
     try {

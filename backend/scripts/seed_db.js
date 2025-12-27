@@ -165,6 +165,9 @@ async function run() {
         // Add a couple of requests for the extra equipment
         lines.push("INSERT IGNORE INTO MaintenanceRequest (subject,type,status,equipmentId,teamId,technicianId) VALUES ('Belt misalignment','CORRECTIVE','NEW',(SELECT id FROM Equipment WHERE serial_number='EQ-100' LIMIT 1),(SELECT id FROM MaintenanceTeam WHERE team_name='Logistics' LIMIT 1),(SELECT id FROM `User` WHERE role='TECHNICIAN' LIMIT 1));");
         lines.push("INSERT IGNORE INTO MaintenanceRequest (subject,type,status,equipmentId,teamId,technicianId) VALUES ('Overheating motor','CORRECTIVE','NEW',(SELECT id FROM Equipment WHERE serial_number='EQ-200' LIMIT 1),(SELECT id FROM MaintenanceTeam WHERE team_name='Mechanics' LIMIT 1),(SELECT id FROM `User` WHERE role='TECHNICIAN' LIMIT 1));");
+        // Add varied-status requests for testing UI flows
+        lines.push("INSERT IGNORE INTO MaintenanceRequest (subject,type,status,equipmentId,teamId,technicianId) VALUES ('Bearing replacement','CORRECTIVE','IN_PROGRESS',(SELECT id FROM Equipment WHERE serial_number='EQ-100' LIMIT 1),(SELECT id FROM MaintenanceTeam WHERE team_name='Logistics' LIMIT 1),(SELECT id FROM `User` WHERE role='TECHNICIAN' LIMIT 1));");
+        lines.push("INSERT IGNORE INTO MaintenanceRequest (subject,type,status,equipmentId,teamId,technicianId) VALUES ('Control panel repair','CORRECTIVE','REPAIRED',(SELECT id FROM Equipment WHERE serial_number='EQ-200' LIMIT 1),(SELECT id FROM MaintenanceTeam WHERE team_name='Mechanics' LIMIT 1),(SELECT id FROM `User` WHERE role='TECHNICIAN' LIMIT 1));");
 
         fs.writeFileSync(seedSqlPath, lines.join('\n') + '\n', { encoding: 'utf8' });
         console.log('Appended extra dummy data to', seedSqlPath);
