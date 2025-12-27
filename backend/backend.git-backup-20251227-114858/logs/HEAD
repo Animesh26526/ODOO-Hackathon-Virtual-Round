@@ -1,0 +1,17 @@
+0000000000000000000000000000000000000000 c879ca08301e3415f9aacabf5a970376fea431b1 Namraa Patel <patelnamraa310806@gmail.com> 1766811870 +0530	commit (initial): chore: backend scaffold, prisma schema, controllers, routes, README and seed
+c879ca08301e3415f9aacabf5a970376fea431b1 0000000000000000000000000000000000000000 Namraa Patel <patelnamraa310806@gmail.com> 1766811870 +0530	Branch: renamed refs/heads/master to refs/heads/main
+0000000000000000000000000000000000000000 c879ca08301e3415f9aacabf5a970376fea431b1 Namraa Patel <patelnamraa310806@gmail.com> 1766811870 +0530	Branch: renamed refs/heads/master to refs/heads/main
+c879ca08301e3415f9aacabf5a970376fea431b1 c879ca08301e3415f9aacabf5a970376fea431b1 Namraa Patel <patelnamraa310806@gmail.com> 1766811871 +0530	checkout: moving from main to namraa
+c879ca08301e3415f9aacabf5a970376fea431b1 f3c08f749b83cb030cd66e878a005ac45ae06674 Namraa Patel <patelnamraa310806@gmail.com> 1766812124 +0530	commit: docs: update README
+f3c08f749b83cb030cd66e878a005ac45ae06674 13a331bd3d2dd97b0cda9c4513bf7fde09c7662f Namraa Patel <patelnamraa310806@gmail.com> 1766813894 +0530	commit: chore: add reset/seed scripts and SQL
+13a331bd3d2dd97b0cda9c4513bf7fde09c7662f f3c08f749b83cb030cd66e878a005ac45ae06674 Namraa Patel <patelnamraa310806@gmail.com> 1766813978 +0530	reset: moving to HEAD~1
+f3c08f749b83cb030cd66e878a005ac45ae06674 13a331bd3d2dd97b0cda9c4513bf7fde09c7662f Namraa Patel <patelnamraa310806@gmail.com> 1766814033 +0530	reset: moving to 13a331b
+13a331bd3d2dd97b0cda9c4513bf7fde09c7662f c879ca08301e3415f9aacabf5a970376fea431b1 Namraa Patel <patelnamraa310806@gmail.com> 1766814465 +0530	checkout: moving from namraa to main
+c879ca08301e3415f9aacabf5a970376fea431b1 13a331bd3d2dd97b0cda9c4513bf7fde09c7662f Namraa Patel <patelnamraa310806@gmail.com> 1766814941 +0530	checkout: moving from main to namraa
+13a331bd3d2dd97b0cda9c4513bf7fde09c7662f c879ca08301e3415f9aacabf5a970376fea431b1 Namraa Patel <patelnamraa310806@gmail.com> 1766815656 +0530	checkout: moving from namraa to main
+c879ca08301e3415f9aacabf5a970376fea431b1 41a3b6183fde0b09eb064ac72033abd4d67585d0 Namraa Patel <patelnamraa310806@gmail.com> 1766815657 +0530	merge namraa: Merge made by the 'ort' strategy.
+41a3b6183fde0b09eb064ac72033abd4d67585d0 13a331bd3d2dd97b0cda9c4513bf7fde09c7662f Namraa Patel <patelnamraa310806@gmail.com> 1766815769 +0530	reset: moving to namraa
+13a331bd3d2dd97b0cda9c4513bf7fde09c7662f 13a331bd3d2dd97b0cda9c4513bf7fde09c7662f Namraa Patel <patelnamraa310806@gmail.com> 1766815866 +0530	checkout: moving from main to namraa
+13a331bd3d2dd97b0cda9c4513bf7fde09c7662f 13a331bd3d2dd97b0cda9c4513bf7fde09c7662f Namraa Patel <patelnamraa310806@gmail.com> 1766816020 +0530	checkout: moving from namraa to main
+13a331bd3d2dd97b0cda9c4513bf7fde09c7662f 13a331bd3d2dd97b0cda9c4513bf7fde09c7662f Namraa Patel <patelnamraa310806@gmail.com> 1766816020 +0530	reset: moving to namraa
+13a331bd3d2dd97b0cda9c4513bf7fde09c7662f 13a331bd3d2dd97b0cda9c4513bf7fde09c7662f Namraa Patel <patelnamraa310806@gmail.com> 1766816022 +0530	checkout: moving from main to namraa

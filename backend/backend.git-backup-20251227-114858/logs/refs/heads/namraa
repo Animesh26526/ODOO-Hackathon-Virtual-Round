@@ -1,0 +1,5 @@
+0000000000000000000000000000000000000000 c879ca08301e3415f9aacabf5a970376fea431b1 Namraa Patel <patelnamraa310806@gmail.com> 1766811871 +0530	branch: Created from HEAD
+c879ca08301e3415f9aacabf5a970376fea431b1 f3c08f749b83cb030cd66e878a005ac45ae06674 Namraa Patel <patelnamraa310806@gmail.com> 1766812124 +0530	commit: docs: update README
+f3c08f749b83cb030cd66e878a005ac45ae06674 13a331bd3d2dd97b0cda9c4513bf7fde09c7662f Namraa Patel <patelnamraa310806@gmail.com> 1766813894 +0530	commit: chore: add reset/seed scripts and SQL
+13a331bd3d2dd97b0cda9c4513bf7fde09c7662f f3c08f749b83cb030cd66e878a005ac45ae06674 Namraa Patel <patelnamraa310806@gmail.com> 1766813978 +0530	reset: moving to HEAD~1
+f3c08f749b83cb030cd66e878a005ac45ae06674 13a331bd3d2dd97b0cda9c4513bf7fde09c7662f Namraa Patel <patelnamraa310806@gmail.com> 1766814033 +0530	reset: moving to 13a331b
