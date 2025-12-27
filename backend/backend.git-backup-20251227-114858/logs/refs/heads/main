@@ -1,4 +1,0 @@
-0000000000000000000000000000000000000000 c879ca08301e3415f9aacabf5a970376fea431b1 Namraa Patel <patelnamraa310806@gmail.com> 1766811870 +0530	commit (initial): chore: backend scaffold, prisma schema, controllers, routes, README and seed
-c879ca08301e3415f9aacabf5a970376fea431b1 c879ca08301e3415f9aacabf5a970376fea431b1 Namraa Patel <patelnamraa310806@gmail.com> 1766811870 +0530	Branch: renamed refs/heads/master to refs/heads/main
-c879ca08301e3415f9aacabf5a970376fea431b1 41a3b6183fde0b09eb064ac72033abd4d67585d0 Namraa Patel <patelnamraa310806@gmail.com> 1766815657 +0530	merge namraa: Merge made by the 'ort' strategy.
-41a3b6183fde0b09eb064ac72033abd4d67585d0 13a331bd3d2dd97b0cda9c4513bf7fde09c7662f Namraa Patel <patelnamraa310806@gmail.com> 1766815769 +0530	reset: moving to namraa
