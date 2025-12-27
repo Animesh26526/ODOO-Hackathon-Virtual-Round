@@ -5,19 +5,24 @@ async function createRequest(req, res) {
   try {
     const { subject, type, equipmentId, scheduledDate } = req.body;
     const requesterId = req.user?.id || null;
+    console.log('createRequest body:', { subject, type, equipmentId, scheduledDate, user: req.user })
     if (!subject || !type || !equipmentId) return res.status(400).json({ error: 'Missing required fields' });
 
     // load equipment to determine team
     const equipment = await prisma.equipment.findUnique({ where: { id: Number(equipmentId) } });
     if (!equipment) return res.status(404).json({ error: 'Equipment not found' });
 
+    // normalize enum values (backend accepts PREVENTIVE/CORRECTIVE)
+    const normalizedType = typeof type === 'string' ? type.toUpperCase() : type
+
     const reqData = {
       subject,
-      type,
+      type: normalizedType,
       equipmentId: Number(equipmentId),
       teamId: equipment.teamId,
       scheduledDate: scheduledDate ? new Date(scheduledDate) : null,
     };
+    console.log('createRequest reqData:', reqData)
 
     const created = await prisma.maintenanceRequest.create({ data: reqData });
 
