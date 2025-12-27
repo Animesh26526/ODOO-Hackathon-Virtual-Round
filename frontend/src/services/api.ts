@@ -76,6 +76,14 @@ export async function getTeamMembers(teamId: string) {
   return apiFetch(`/api/teams/${teamId}/members`);
 }
 
+export async function createTeam(payload: { name: string; company?: string }) {
+  return apiFetch(`/api/teams`, { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function addTeamMember(teamId: string, userId: string) {
+  return apiFetch(`/api/teams/${teamId}/members`, { method: 'POST', body: JSON.stringify({ userId }) });
+}
+
 export async function getTechnicians() {
   return apiFetch('/api/users?role=TECHNICIAN');
 }
@@ -94,5 +102,7 @@ export const api = {
   assignRequest,
   getTeams,
   getTeamMembers,
+  createTeam,
+  addTeamMember,
   getTechnicians,
 };

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,7 +31,7 @@ import {
   AlertTriangle,
   ArrowUpDown
 } from 'lucide-react';
-import { MaintenanceRequest, User } from '@/types';
+import { MaintenanceRequest, User, Equipment } from '@/types';
 import { api } from '@/services/api';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
@@ -61,7 +61,7 @@ export default function RequestsPage() {
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
   const [equipmentId, setEquipmentId] = useState<string | null>(null);
-  const [equipments, setEquipments] = useState<any[]>([]);
+  const [equipments, setEquipments] = useState<Equipment[]>([]);
   const [type, setType] = useState<'PREVENTIVE' | 'CORRECTIVE'>('CORRECTIVE');
   const [priority, setPriority] = useState<'HIGH' | 'MEDIUM' | 'LOW'>('MEDIUM');
 
@@ -74,24 +74,28 @@ export default function RequestsPage() {
   const [viewRequest, setViewRequest] = useState<MaintenanceRequest | null>(null);
   const [isViewOpen, setIsViewOpen] = useState(false);
 
-  useEffect(() => {
-    loadRequests();
-    loadEquipments();
-  }, []);
+  
 
-  async function loadEquipments() {
+  function normalizeArray<T>(res: unknown): T[] {
+    if (Array.isArray(res)) return res as T[];
+    if (res && typeof res === 'object' && 'data' in res) {
+      const d = (res as { data?: unknown }).data;
+      if (Array.isArray(d)) return d as T[];
+    }
+    return [];
+  }
+
+  const loadEquipments = useCallback(async () => {
     try {
       const res: unknown = await api.getEquipment(1, 200);
-      let list: any[] = [];
-      if (Array.isArray(res)) list = res as any[];
-      else if (res && typeof res === 'object' && 'data' in res && Array.isArray((res as { data?: unknown }).data)) list = (res as { data: any[] }).data;
+      const list = normalizeArray<Equipment>(res);
       setEquipments(list);
     } catch (err) {
       console.error('Failed to load equipment', err);
     }
-  }
+  }, []);
 
-  async function loadRequests() {
+  const loadRequests = useCallback(async () => {
     setIsLoading(true);
     try {
       const res: unknown = await api.getRequests(1, 200);
@@ -105,21 +109,51 @@ export default function RequestsPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    loadRequests();
+    loadEquipments();
+  }, [loadRequests, loadEquipments]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setCreating(true);
     try {
       const payload: Partial<MaintenanceRequest> = { subject, description, equipmentId, type, priority };
-      await api.createRequest(payload);
+      const created: unknown = await api.createRequest(payload);
       toast.success('Request created');
+      // optimistic UI update: attach equipment object if available
+      let equipmentObj = null;
+      if (created && typeof created === 'object' && 'equipmentId' in created) {
+        const eid = (created as { equipmentId?: unknown }).equipmentId;
+        equipmentObj = equipments.find((eq) => String(eq.id) === String(eid)) || null;
+      }
+      const createdReq = (created as MaintenanceRequest);
+      const displayReq = { ...createdReq, equipment: equipmentObj, technician: createdReq.technician ?? null } as MaintenanceRequest;
+      setRequests((prev) => [displayReq, ...prev]);
       setIsCreateOpen(false);
       setSubject(''); setDescription(''); setEquipmentId(null);
-      await loadRequests();
+      // refresh list in background to ensure server data is in sync
+      loadRequests().catch((err) => console.error('Refresh after create failed', err));
     } catch (err) {
       console.error('Create request failed', err);
-      toast.error('Failed to create request');
+      // attempt to confirm creation by refetching requests (in case backend created but returned an error)
+      try {
+        await loadRequests();
+        const found = requests.find(r => r.subject === subject && String(r.equipmentId) === String(equipmentId));
+        if (found) {
+          toast.success('Request created (confirmed)');
+          setIsCreateOpen(false);
+          setSubject(''); setDescription(''); setEquipmentId(null);
+          setCreating(false);
+          return;
+        }
+      } catch (_e) {
+        // ignore
+      }
+      const msg = (err && typeof err === 'object') ? (err.error || (err.message as string) || JSON.stringify(err)) : String(err);
+      toast.error(msg || 'Failed to create request');
     } finally {
       setCreating(false);
     }
@@ -146,7 +180,11 @@ export default function RequestsPage() {
       setIsAssignOpen(false);
       setSelectedRequestId(null);
       setSelectedTechnician(null);
-      await loadRequests();
+      // optimistic update: update local request's technician immediately
+      const tech = technicians.find(t => String(t.id) === String(selectedTechnician)) || null;
+      setRequests(prev => prev.map(r => String(r.id) === String(selectedRequestId) ? { ...r, technician: tech, technicianId: selectedTechnician } : r));
+      // refresh in background
+      loadRequests().catch(() => {});
     } catch (err) {
       console.error('Assign failed', err);
       toast.error('Failed to assign request');
@@ -160,7 +198,8 @@ export default function RequestsPage() {
       (req.equipment?.name || '').toLowerCase().includes(q) ||
       (req.technician?.name || '').toLowerCase().includes(q);
     
-    const matchesStatus = statusFilter === 'all' || req.status === statusFilter;
+    const reqStatus = (req.status || '').toString().toUpperCase();
+    const matchesStatus = statusFilter === 'all' || reqStatus === String(statusFilter).toUpperCase();
     const matchesPriority = priorityFilter === 'all' || req.priority === priorityFilter;
 
     return matchesSearch && matchesStatus && matchesPriority;
@@ -303,7 +342,7 @@ export default function RequestsPage() {
       {/* Stats Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {Object.entries(statusConfig).map(([status, config]) => {
-          const count = requests.filter(r => r.status === status).length;
+          const count = requests.filter(r => (r.status || '').toString().toUpperCase() === status).length;
           const Icon = config.icon;
           return (
             <div 

@@ -11,6 +11,9 @@ import {
   Wrench
 } from 'lucide-react';
 import { api } from '@/services/api';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
 import { MaintenanceRequest } from '@/types';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
@@ -21,6 +24,11 @@ export default function CalendarPage() {
   const { hasPermission } = useAuth();
 
   const [allRequests, setAllRequests] = useState<MaintenanceRequest[]>([]);
+  const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+  const [equipList, setEquipList] = useState<any[]>([]);
+  const [newSubject, setNewSubject] = useState('');
+  const [newEquipmentId, setNewEquipmentId] = useState<string | number | null>(null);
+  const [scheduling, setScheduling] = useState(false);
 
   // Get preventive maintenance requests
   const preventiveRequests = allRequests
@@ -61,6 +69,16 @@ export default function CalendarPage() {
       }
     };
     load();
+    // load equipment for scheduling form
+    (async () => {
+      try {
+        const eq: unknown = await api.getEquipment(1, 500);
+        const list = Array.isArray(eq) ? eq as any[] : ((eq as any)?.data || []);
+        setEquipList(list || []);
+      } catch (err) {
+        console.error('Failed to load equipment for schedule', err);
+      }
+    })();
   }, []);
 
   return (
@@ -143,10 +161,58 @@ export default function CalendarPage() {
                   })}
                 </h3>
                 {hasPermission('requests.schedule') && (
-                  <Button variant="outline" size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Schedule
-                  </Button>
+                  <Dialog open={isScheduleOpen} onOpenChange={setIsScheduleOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Schedule
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Schedule Maintenance</DialogTitle>
+                      </DialogHeader>
+                      <form className="space-y-4" onSubmit={async (e) => {
+                        e.preventDefault();
+                        if (!selectedDate) return;
+                        if (!newSubject || !newEquipmentId) return toast.error('Subject and equipment required');
+                        setScheduling(true);
+                        try {
+                          await api.createRequest({ subject: newSubject, type: 'PREVENTIVE', equipmentId: newEquipmentId, scheduledDate: selectedDate.toISOString() });
+                          toast.success('Scheduled maintenance created');
+                          setIsScheduleOpen(false);
+                          setNewSubject(''); setNewEquipmentId(null);
+                          // refresh requests
+                          const res: unknown = await api.getRequests(1, 500, {});
+                          const list: MaintenanceRequest[] = Array.isArray(res) ? res as MaintenanceRequest[] : ((res as { data?: MaintenanceRequest[] })?.data || []);
+                          setAllRequests(list);
+                        } catch (err) {
+                          console.error('Failed to schedule', err);
+                          toast.error('Failed to schedule maintenance');
+                        } finally {
+                          setScheduling(false);
+                        }
+                      }}>
+                        <div>
+                          <label className="block text-sm mb-1">Subject</label>
+                          <Input value={newSubject} onChange={(e) => setNewSubject(e.target.value)} required />
+                        </div>
+                        <div>
+                          <label className="block text-sm mb-1">Equipment</label>
+                          <select value={newEquipmentId ?? ''} onChange={(e) => setNewEquipmentId(e.target.value)} className="w-full h-10 px-2" required>
+                            <option value="">Choose equipment</option>
+                            {equipList.map(eq => (
+                              <option key={eq.id} value={String(eq.id)}>{eq.name} ({eq.serialNumber || '—'})</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button type="button" variant="outline" onClick={() => setIsScheduleOpen(false)}>Cancel</Button>
+                          <Button type="submit" variant="gradient" disabled={scheduling}>{scheduling ? 'Scheduling...' : 'Schedule'}</Button>
+                        </div>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
                 )}
               </div>
 
@@ -235,7 +301,7 @@ export default function CalendarPage() {
             )}
 
             {hasPermission('requests.schedule') && (
-              <Button variant="outline" className="w-full mt-4">
+              <Button variant="outline" className="w-full mt-4" onClick={() => { setSelectedDate(new Date()); setIsScheduleOpen(true); }}>
                 <Plus className="h-4 w-4 mr-2" />
                 Schedule New
               </Button>

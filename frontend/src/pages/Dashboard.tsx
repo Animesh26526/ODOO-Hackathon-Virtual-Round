@@ -12,6 +12,7 @@ import {
   Calendar
 } from 'lucide-react';
 import { api } from '@/services/api';
+import { useNavigate } from 'react-router-dom';
 import { DashboardStats, MaintenanceRequest } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 
@@ -20,6 +21,7 @@ export default function Dashboard() {
   const [recentRequests, setRecentRequests] = useState<MaintenanceRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -123,7 +125,7 @@ export default function Dashboard() {
           </div>
         </div>
         
-        <div className="stat-card flex items-center gap-4 cursor-pointer hover:border-primary/50 transition-colors">
+        <div className="stat-card flex items-center gap-4 cursor-pointer hover:border-primary/50 transition-colors" onClick={() => navigate('/requests')}>
           <div className="rounded-xl bg-warning/10 p-4">
             <ClipboardList className="h-6 w-6 text-warning" />
           </div>

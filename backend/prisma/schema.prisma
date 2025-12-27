@@ -59,8 +59,8 @@ datasource db {
  }
 
  model TeamMember {
-   teamId   Int
-   userId   Int
+  teamId   Int    @map("team_id")
+  userId   Int    @map("user_id")
   team     MaintenanceTeam @relation(fields: [teamId], references: [id])
   user     User            @relation(fields: [userId], references: [id])
 
@@ -141,7 +141,7 @@ datasource db {
   performedBy   User?   @relation(fields: [performedById], references: [id])
 
   notes         String?
-  durationHours Float?
+  durationHours Float? @map("duration_hours")
   createdAt     DateTime @default(now()) @map("created_at")
  }
 

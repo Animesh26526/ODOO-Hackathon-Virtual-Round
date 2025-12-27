@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { MaintenanceRequest } from '@/types';
 import { api } from '@/services/api';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
@@ -47,6 +48,22 @@ export default function KanbanPage() {
   const [requests, setRequests] = useState<MaintenanceRequest[]>([]);
   const [draggedCard, setDraggedCard] = useState<string | null>(null);
   const { hasPermission } = useAuth();
+  const navigate = useNavigate();
+
+  // demo/sample requests to ensure each column has content for nicer UX
+  const sampleRequests: MaintenanceRequest[] = [
+    { id: 'demo-new-1', subject: 'Replace air filter', status: 'NEW', priority: 'MEDIUM', type: 'CORRECTIVE', equipment: { name: 'HVAC Unit' }, technician: null, createdAt: new Date().toISOString(), isOverdue: false },
+    { id: 'demo-new-2', subject: 'Check coolant level', status: 'NEW', priority: 'MEDIUM', type: 'PREVENTIVE', equipment: { name: 'Compressor' }, technician: null, createdAt: new Date().toISOString(), isOverdue: false },
+    { id: 'demo-progress-1', subject: 'Inspect conveyor belt', status: 'IN_PROGRESS', priority: 'HIGH', type: 'CORRECTIVE', equipment: { name: 'Conveyor 1' }, technician: { name: 'Alex' }, createdAt: new Date().toISOString(), isOverdue: false },
+    { id: 'demo-progress-2', subject: 'Replace worn rollers', status: 'IN_PROGRESS', priority: 'HIGH', type: 'CORRECTIVE', equipment: { name: 'Conveyor 2' }, technician: { name: 'Sam' }, createdAt: new Date().toISOString(), isOverdue: false },
+    { id: 'demo-progress-3', subject: 'Lubricate bearings', status: 'IN_PROGRESS', priority: 'MEDIUM', type: 'PREVENTIVE', equipment: { name: 'Roller A' }, technician: { name: 'Lee' }, createdAt: new Date().toISOString(), isOverdue: false },
+    { id: 'demo-repaired-1', subject: 'Calibrate sensor', status: 'REPAIRED', priority: 'LOW', type: 'PREVENTIVE', equipment: { name: 'Sensor A' }, technician: { name: 'Priya' }, createdAt: new Date().toISOString(), isOverdue: false },
+    { id: 'demo-repaired-2', subject: 'Tighten bolts', status: 'REPAIRED', priority: 'LOW', type: 'CORRECTIVE', equipment: { name: 'Pump B' }, technician: { name: 'Jordan' }, createdAt: new Date().toISOString(), isOverdue: false },
+    { id: 'demo-repaired-3', subject: 'Replace gasket', status: 'REPAIRED', priority: 'LOW', type: 'CORRECTIVE', equipment: { name: 'Valve 3' }, technician: { name: 'Ravi' }, createdAt: new Date().toISOString(), isOverdue: false },
+    { id: 'demo-repaired-4', subject: 'Update firmware', status: 'REPAIRED', priority: 'LOW', type: 'PREVENTIVE', equipment: { name: 'Controller X' }, technician: { name: 'Mira' }, createdAt: new Date().toISOString(), isOverdue: false },
+    { id: 'demo-scrap-1', subject: 'Dispose old motor', status: 'SCRAP', priority: 'LOW', type: 'CORRECTIVE', equipment: { name: 'Motor X' }, technician: null, createdAt: new Date().toISOString(), isOverdue: false },
+    { id: 'demo-scrap-2', subject: 'Remove corroded panel', status: 'SCRAP', priority: 'LOW', type: 'CORRECTIVE', equipment: { name: 'Panel Z' }, technician: null, createdAt: new Date().toISOString(), isOverdue: false },
+  ];
 
   useEffect(() => {
     const load = async () => {
@@ -63,7 +80,22 @@ export default function KanbanPage() {
         ) {
           list = (res as { data: MaintenanceRequest[] }).data;
         }
-        setRequests(list);
+        // ensure each column has a small set of demo items for visual completeness
+        const targetCounts: Record<RequestStatus, number> = { NEW: 2, IN_PROGRESS: 3, REPAIRED: 4, SCRAP: 2 };
+        const augmented = [...list];
+        for (const statusKey of Object.keys(targetCounts) as RequestStatus[]) {
+          const needed = targetCounts[statusKey] - augmented.filter(r => r.status === statusKey).length;
+          if (needed > 0) {
+            const candidates = sampleRequests.filter(d => d.status === statusKey).slice(0, needed);
+            // if not enough distinct samples, clone with suffixes
+            for (let i = 0; i < needed; i++) {
+              const base = candidates[i] || sampleRequests.find(d => d.status === statusKey)!;
+              const clone = { ...base, id: `${base.id}-extra-${i}-${Math.random().toString(36).slice(2,6)}` } as MaintenanceRequest;
+              augmented.push(clone);
+            }
+          }
+        }
+        setRequests(augmented);
       } catch (err) {
         console.error('Failed to load requests', err);
       }
@@ -137,7 +169,7 @@ export default function KanbanPage() {
         </div>
         
         {hasPermission('requests.create') && (
-          <Button variant="gradient">
+          <Button variant="gradient" onClick={() => navigate('/requests')}>
             <Plus className="h-4 w-4 mr-2" />
             New Request
           </Button>
@@ -208,7 +240,11 @@ export default function KanbanPage() {
                       </div>
                       <div className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        {new Date(request.createdAt).toLocaleDateString()}
+                        {request.scheduledDate ? (
+                          <span>{new Date(request.scheduledDate).toLocaleDateString()}</span>
+                        ) : (
+                          <span>{new Date(request.createdAt).toLocaleDateString()}</span>
+                        )}
                       </div>
                     </div>
 

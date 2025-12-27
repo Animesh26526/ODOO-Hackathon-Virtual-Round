@@ -24,7 +24,7 @@ async function createRequest(req, res) {
     };
     console.log('createRequest reqData:', reqData)
 
-    const created = await prisma.maintenanceRequest.create({ data: reqData });
+    const created = await prisma.maintenanceRequest.create({ data: reqData, include: { equipment: true, technician: true, team: true } });
 
     // create initial log
     await prisma.maintenanceLog.create({ data: { requestId: created.id, action: 'CREATE', toStatus: created.status, performedById: requesterId } });

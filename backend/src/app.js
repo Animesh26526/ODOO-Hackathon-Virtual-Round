@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth.routes');
 const equipmentRoutes = require('./routes/equipment.routes');
 const requestRoutes = require('./routes/request.routes');
 const teamRoutes = require('./routes/team.routes');
+const userRoutes = require('./routes/user.routes');
 
 app.get('/health', (req, res) => res.json({ ok: true }));
 
@@ -23,6 +24,7 @@ app.get('/api/equipment', async (req, res) => {
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/requests', requestRoutes);
 app.use('/api/teams', teamRoutes);
+app.use('/api/users', userRoutes);
 
 const port = process.env.PORT || 3001;
 app.listen(port, () => {
