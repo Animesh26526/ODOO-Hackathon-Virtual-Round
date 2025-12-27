@@ -100,4 +100,4 @@ Contact / onboarding steps for frontend team
 3. For drag/drop Kanban, call `PATCH /requests/:id/status` to update state.
 4. For calendar views, fetch preventive requests and display `scheduledDate`.
 
-That's it — if you want, I can add a Postman collection or OpenAPI spec next.
+
