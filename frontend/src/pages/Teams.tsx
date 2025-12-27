@@ -2,6 +2,15 @@ import { useState, useEffect } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 // Progress component missing in UI kit; use a simple inline bar instead.
 import { 
   Plus, 
@@ -34,6 +43,11 @@ export default function TeamsPage() {
   const { hasPermission } = useAuth();
   const [teams, setTeams] = useState<Team[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [creatingTeam, setCreatingTeam] = useState(false);
+  const [newTeamName, setNewTeamName] = useState('');
+  const [newTeamCompany, setNewTeamCompany] = useState('');
+  const [isAddTechOpen, setIsAddTechOpen] = useState(false);
   interface Request {
     id: number | string;
     teamId?: number | string;
@@ -73,12 +87,41 @@ export default function TeamsPage() {
         } else {
           setRequests([]);
         }
+        // if no teams exist on backend, create a couple of sample teams
+        const teamsEmpty = Array.isArray(tRes) ? tRes.length === 0 : !(tRes && typeof tRes === 'object' && Array.isArray((tRes as { data?: Team[] }).data) && (tRes as { data?: Team[] }).data!.length > 0);
+        if (teamsEmpty) {
+          try {
+            await api.createTeam({ name: 'Maintenance A', company: 'Acme Corp' });
+            await api.createTeam({ name: 'Maintenance B', company: 'ACME Plant 2' });
+            const after: any = await api.getTeams();
+            if (Array.isArray(after)) setTeams(after);
+            else if (after && typeof after === 'object' && Array.isArray((after as { data?: Team[] }).data)) setTeams((after as { data: Team[] }).data);
+          } catch (seedErr) {
+            console.error('Failed to seed teams', seedErr);
+          }
+        }
       } catch (err) {
         console.error('Failed to load teams data', err);
       }
     };
     load();
   }, []);
+
+  async function handleCreateTeam(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newTeamName) return;
+    setCreatingTeam(true);
+    try {
+      const created: any = await api.createTeam({ name: newTeamName, company: newTeamCompany });
+      // optimistic update: append created team to list
+      setTeams((prev) => [created, ...prev]);
+      setNewTeamName(''); setNewTeamCompany(''); setIsCreateOpen(false);
+    } catch (err) {
+      console.error('Create team failed', err);
+    } finally {
+      setCreatingTeam(false);
+    }
+  }
 
   const getTeamStats = (teamId: number | string) => {
     const teamRequests = requests.filter(r => String(r.teamId) === String(teamId));
@@ -92,6 +135,66 @@ export default function TeamsPage() {
     // backend provides member lists through /api/teams/:id/members endpoint, but we simulate by filtering technicians
     return technicians.slice(0, 3);
   };
+
+// Add Technician form component
+function AddTechnicianForm({ teams, onAdded }: { teams: Team[]; onAdded: (created?: any) => Promise<void> | void }) {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('password123');
+  const [teamId, setTeamId] = useState<string | ''>('');
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name || !email || !password) return;
+    setSubmitting(true);
+    try {
+      const created: any = await api.authRegister({ name, email, password, role: 'TECHNICIAN' });
+      if (teamId) {
+        try {
+          await api.addTeamMember(String(teamId), String(created.id));
+        } catch (err) {
+          console.error('Failed to add member to team', err);
+        }
+      }
+      await onAdded(created);
+    } catch (err) {
+      console.error('Create technician failed', err);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-3 mt-2">
+      <div>
+        <label className="text-sm block mb-1">Full name</label>
+        <Input value={name} onChange={(e) => setName(e.target.value)} required />
+      </div>
+      <div>
+        <label className="text-sm block mb-1">Email</label>
+        <Input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required />
+      </div>
+      <div>
+        <label className="text-sm block mb-1">Password</label>
+        <Input value={password} onChange={(e) => setPassword(e.target.value)} required />
+      </div>
+      <div>
+        <label className="text-sm block mb-1">Add to team (optional)</label>
+        <select value={teamId} onChange={(e) => setTeamId(e.target.value)} className="w-full h-10 px-2">
+          <option value="">None</option>
+          {teams.map(t => (
+            <option key={t.id} value={String(t.id)}>{(t as any).teamName || (t as any).name || `Team ${t.id}`}</option>
+          ))}
+        </select>
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button variant="outline" type="button" onClick={() => { /* Dialog close handled by parent */ }}>Cancel</Button>
+        <Button type="submit" variant="gradient" disabled={submitting}>{submitting ? 'Adding...' : 'Add Technician'}</Button>
+      </div>
+    </form>
+  );
+}
 
   return (
     <AppLayout 
@@ -110,12 +213,65 @@ export default function TeamsPage() {
           </Badge>
         </div>
         
-        {hasPermission('teams.manage') && (
-          <Button variant="gradient">
-            <Plus className="h-4 w-4 mr-2" />
-            Create Team
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {hasPermission('teams.manage') && (
+            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+              <DialogTrigger asChild>
+                <Button variant="gradient">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Team
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create Team</DialogTitle>
+                  <DialogDescription>Provide a name and optional company.</DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleCreateTeam} className="space-y-3 mt-2">
+                  <div>
+                    <label className="text-sm block mb-1">Team name</label>
+                    <Input value={newTeamName} onChange={(e) => setNewTeamName(e.target.value)} required />
+                  </div>
+                  <div>
+                    <label className="text-sm block mb-1">Company</label>
+                    <Input value={newTeamCompany} onChange={(e) => setNewTeamCompany(e.target.value)} />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" type="button" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+                    <Button type="submit" variant="gradient" disabled={creatingTeam}>{creatingTeam ? 'Creating...' : 'Create'}</Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
+
+          {hasPermission('teams.manage') && (
+            <Dialog open={isAddTechOpen} onOpenChange={setIsAddTechOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Add Technician
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add Technician</DialogTitle>
+                  <DialogDescription>Create a technician account and optionally add to a team.</DialogDescription>
+                </DialogHeader>
+                <AddTechnicianForm teams={teams} onAdded={async (created) => {
+                  if (created) {
+                    setTechnicians((prev) => [created, ...prev]);
+                  } else {
+                    const t: any = await api.getTechnicians();
+                    if (Array.isArray(t)) setTechnicians(t);
+                    else if (t && typeof t === 'object' && Array.isArray((t as { data?: Technician[] }).data)) setTechnicians((t as { data: Technician[] }).data);
+                  }
+                  setIsAddTechOpen(false);
+                }} />
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
       </div>
 
       {/* Teams Grid */}
@@ -145,9 +301,9 @@ export default function TeamsPage() {
               </div>
 
               <h3 className="font-semibold text-lg text-foreground mb-1 group-hover:text-primary transition-colors">
-                {team.teamName}
+                {(team as any).teamName || (team as any).name || `Team ${team.id}`}
               </h3>
-              <p className="text-sm text-muted-foreground mb-4">{team.company}</p>
+                <p className="text-sm text-muted-foreground mb-4">{(team as any).company || ''}</p>
 
               {/* Team Members */}
               <div className="flex items-center gap-2 mb-4">
